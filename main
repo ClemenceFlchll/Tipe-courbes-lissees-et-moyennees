@@ -1,0 +1,377 @@
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import curve_fit
+
+## DONNNEES : DES COURBES RECUPEREES DANS LATIS PRO DE LA DECHARGE D'UN SUPERCONDENSATEUR
+
+# courbes de décharge du gros condensateur dans une résistance de un ohm :
+G1 = 'C:/Users/Clem/Desktop/tipe/décharge gros resistance 1 ohm exp 1 vendredi 4 fev.txt'
+G2 ='C:/Users/Clem/Desktop/tipe/décharge gros resistance 1 ohm exp 2 vendredi 4 février.txt'
+G3 = 'C:/Users/Clem/Desktop/tipe/décharge gros resistance 1 ohm exp 3 vendredi 4 février.txt'
+G4 = 'C:/Users/Clem/Desktop/tipe/décharge gros resistance 1 ohm exp 4 vendredi 4 février.txt'
+
+# courbes de décharge du petit condensateur dans une résistance de un ohm :
+P1 = 'C:/Users/Clem/Desktop/tipe/décharge petit resistance 1 ohm exp 1 vendredi 4 février.txt'
+P2 = 'C:/Users/Clem/Desktop/tipe/décharge petit resistance 1 ohm exp 2 vendredi 4 février.txt'
+P3 = 'C:/Users/Clem/Desktop/tipe/décharge petit resistance 1 ohm exp 3 vendredi 4 février.txt'
+P4 = 'C:/Users/Clem/Desktop/tipe/décharge petit resistance 1 ohm exp 4 vendredi 4 février.txt'
+
+# courbes de décharge du petit condensateur dans le moteur, essai, on voit ici l'image de la tachymétrie dont on a calculé le rapport
+Mot ='C:/Users/Clem/Desktop/tipe/décharge petit cond dans moteur (images de la tension de la tach) vendredi 4 fevrier.txt'
+
+#Répertoire de couleurs pour les courbes
+#FC5D5D rouge
+#4B0082 mauve foncé
+#F7E269 jaune clair
+#9683EC mauve clair
+#01D758 vert émeraude
+#77B5FE bleu
+
+## FONCTIONS AFIN D'EXPLOITER LES DONNEES
+
+# Lecture des fichiers obtenus dans LatisPro et renvoi de deux listes X et Y contenant les coordonnées des points formants la courbe (Y l'intensité et X le temps) :
+
+def lecture(adresse):
+    f = open(adresse,mode='r') #le r veut dire qu'on est en lecture seule du fichier
+    X = []
+    Y = []
+    for line in  f:
+        line = line.replace(",",".")
+        line = line.split()
+        try:
+            xi,yi = line
+        except:
+            continue
+        xi,yi = float(xi),float(yi)
+        X.append(xi)
+        Y.append(yi)
+    f.close()
+    return X,Y
+
+def tracersimple(file,title):#on trace une courbe de décharge sur 60 secondes
+    X,Y=lecture(file)
+    t=[i for i in range (len(X))]
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(X,Y,c='#77B5FE', linewidth=0.7)
+    plt.grid()
+    plt.xlabel('temps en s')
+    plt.ylabel('intensité en V')
+    plt.title(title)
+    plt.xlim([0,60])
+    plt.show()
+
+# On veut maintenant observer toutes les courbes de décharge
+
+def affichsimplegros(): #on recupère les courbes de décharge du gros condensateur dans une résistance de 1 ohm
+    tracersimple(G1,'test 1 du gros condensateur en décharge dans une résistance de un ohm')
+    tracersimple(G2,'test 2 du gros condensateur en décharge dans une résistance de un ohm')
+    tracersimple(G3,'test 3 du gros condensateur en décharge dans une résistance de un ohm')
+    tracersimple(G4,'test 4 du gros condensateur en décharge dans une résistance de un ohm')
+
+def affichsimplepetit(): #on recupère les courbes de décharge du gros condensateur dans une résistance de 1 ohm
+    tracersimple(P1,'test 1 du petit condensateur en décharge dans une résistance de un ohm')
+    tracersimple(P2,'test 2 du petit condensateur en décharge dans une résistance de un ohm')
+    tracersimple(P3,'test 3 du petit condensateur en décharge dans une résistance de un ohm')
+    tracersimple(P4,'test 4 du petit condensateur en décharge dans une résistance de un ohm')
+
+# On observe que les courbes sont bruités, on décide de les lisser afin de mieux les exploiter
+
+def lecturelissee(adresse,n):  # L'indice n est le degré de lissage, plus il est élevé, plus la courbe est lissée
+    f = open(adresse,mode='r')
+    x = []
+    y = []
+    for line in f:
+        line = line.replace(",",".")
+        line = line.split()
+        try:
+            xi,yi = line
+        except:
+            continue
+        xi,yi = float(xi),float(yi)
+        x.append(xi)
+        y.append(yi)
+    f.close()
+    Y10 = []
+    for i in range(len(y)-n):
+        s=0
+        for k in range(n):
+            s+= y[i+k]
+        Y10.append(s/n)
+    Y10+=y[len(y)-n:len(y)]
+    return x,Y10
+
+# On veut ensuite tracer ces courbes, en pouvant choisir n (donc on ne peut pas réutiliser la fonction tracersimple
+
+def tracerlisse(file,n,title):#on trace une courbe de décharge sur 60 secondes
+    X,Y=lecturelissee(file,n)
+    t=[i for i in range (len(X))]
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(X,Y,c='#9683EC',linewidth = 0.7)
+    plt.grid()
+    plt.xlabel('temps en s')
+    plt.ylabel('intensité en V')
+    plt.title(title)
+    plt.xlim([0,60])
+    plt.show()
+
+# On affiche ensuite toutes ces courbes lissées, on choisi n idéal après plusieurs essais
+
+def affichlissegros():
+    tracerlisse(G1,80,'test 1 lissé du gros condensateur en décharge dans une résistance de un ohm')
+    tracerlisse(G2,80,'test 2 lissé du gros condensateur en décharge dans une résistance de un ohm')
+    tracerlisse(G3,100,'test 3 lissé du gros condensateur en décharge dans une résistance de un ohm')
+    tracerlisse(G4,100,'test 4 lissé du gros condensateur en décharge dans une résistance de un ohm')
+#besoin de plus lisser G3 et G4 car elles sont plus bruitées que G1 et G2
+
+def affichlissepetit():
+    tracerlisse(P1,100,'test 1 lissé du petit condensateur en décharge dans une résistance de un ohm')
+    tracerlisse(P2,80,'test 2 lissé du petit condensateur en décharge dans une résistance de un ohm')
+    tracerlisse(P3,80,'test 3 lissé du petit condensateur en décharge dans une résistance de un ohm')
+    tracerlisse(P4,80,'test 4 lissé du petit condensateur en décharge dans une résistance de un ohm')
+
+
+#On trace toutes les courbes lissées sur la même figure
+
+def tracerlisseALL(f1,f2,f3,f4,n1,n2,n3,n4,title):
+    X1,Y1=lecturelissee(f1,n1)
+    X2,Y2=lecturelissee(f2,n1)
+    X3,Y3=lecturelissee(f3,n1)
+    X4,Y4=lecturelissee(f4,n4)
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(X1,Y1,label='test 1',c='#77B5FE',linewidth =0.7)
+    plt.plot(X2,Y2,label='test 2',c='#F7E269',linewidth = 0.7)
+    plt.plot(X3,Y3,label='test 3',c='#FC5D5D',linewidth = 0.7)
+    plt.plot(X4,Y4,label='test 4',c='#9683EC', linewidth = 0.7)
+    plt.legend()
+    plt.xlabel('temps en s')
+    plt.grid()
+    plt.ylabel('intensité en V')
+    plt.title(title)
+    plt.xlim([0,60])
+    plt.show()
+
+# On souhaite, après avoir lissé toutes les courbes de charge d'un supercondensateur,
+# les décaler pour qu'elles "démarrent" toutes en même temps, pour ce faire on récupère le début de la courbe (quand la courbe dépasse un écart e par rapport à l'axe X)
+# grâce à la fonction debut courbe
+
+
+def debutcourbe(Y,e):
+    i = 0
+    while Y[i]<e :
+        i+=1
+    return i
+
+
+# On réalise la même fonction que tracerlisseALL mais en ajoutant un décalage qui fait débuter les courbes au même endroit
+# On fait une fois la fonction pour 4 courbes puis pour 3 courbes (car on a pas le même nombre de courbes pour le condensateur de 5F et celui de 10F)
+
+def decaler(f1,f2,f3,f4,n1,n2,n3,n4,title,e):
+    X1,Y1=lecturelissee(f1,n1)
+    X2,Y2=lecturelissee(f2,n1)
+    X3,Y3=lecturelissee(f3,n1)
+    X4,Y4=lecturelissee(f4,n4)
+
+    m1,m2,m3,m4 = debutcourbe(Y1,e),debutcourbe(Y2,e),debutcourbe(Y3,e),debutcourbe(Y4,e)
+
+    m = max (m1,m2,m3,m4)
+
+    Y1 = (m-m1)*[0] + Y1
+    Y4 = (m-m4)*[0] + Y4
+    Y3 = (m-m3)*[0] + Y3
+    Y2 = (m-m2)*[0] + Y2
+
+    h = X2[2] - X2[1]
+    xmax = X2[len(X2)-1]
+    X2 = X2 + [xmax + i*h for i in range(m-m2)]
+
+    h = X3[2] - X3[1]
+    xmax = X3[len(X3)-1]
+    X3 = X3 + [xmax + i*h for i in range(m-m3)]
+
+    h = X4[2] - X4[1]
+    xmax = X4[len(X4)-1]
+    X4 = X4 + [xmax + i*h for i in range(m-m4)]
+
+    h = X1[2] - X1[1]
+    xmax = X1[len(X1)-1]
+    X1 = X1 + [xmax + i*h for i in range(m-m1)]
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(X1,Y1,label='test 1',c='#77B5FE',linewidth =0.7)
+    plt.plot(X2,Y2,label='test 2',c='#F7E269',linewidth = 0.7)
+    plt.plot(X3,Y3,label='test 3',c='#FC5D5D',linewidth = 0.7)
+    plt.plot(X4,Y4,label='test 4',c='#9683EC', linewidth = 0.7)
+    plt.grid()
+    plt.legend()
+    plt.xlabel('temps en s')
+    plt.ylabel('intensité en V')
+    plt.title(title)
+    plt.xlim([0,60])
+    plt.show()
+
+
+def decaler3(f1,f2,f3,n1,n2,n3,title,e):
+    X1,Y1=lecturelissee(f1,n1)
+    X2,Y2=lecturelissee(f2,n1)
+    X3,Y3=lecturelissee(f3,n1)
+
+    m1,m2,m3 = debutcourbe(Y1,e),debutcourbe(Y2,e),debutcourbe(Y3,e)
+
+    m = max (m1,m2,m3)
+
+    Y1 = (m-m1)*[0] + Y1
+
+    Y3 = (m-m3)*[0] + Y3
+    Y2 = (m-m2)*[0] + Y2
+
+    h = X2[2] - X2[1]
+    xmax = X2[len(X2)-1]
+    X2 = X2 + [xmax + i*h for i in range(m-m2)]
+
+    h = X3[2] - X3[1]
+    xmax = X3[len(X3)-1]
+    X3 = X3 + [xmax + i*h for i in range(m-m3)]
+
+    h = X1[2] - X1[1]
+    xmax = X1[len(X1)-1]
+    X1 = X1 + [xmax + i*h for i in range(m-m1)]
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(X1,Y1,label='test 4',c='#77B5FE',linewidth =0.7)
+    plt.plot(X2,Y2,label='test 2',c='#F7E269',linewidth = 0.7)
+    plt.plot(X3,Y3,label='test 3',c='#FC5D5D',linewidth = 0.7)
+
+    plt.grid()
+    plt.legend()
+    plt.xlabel('temps en s')
+    plt.ylabel('intensité en V')
+    plt.title(title)
+    plt.xlim([0,60])
+    plt.show()
+
+# On recopie la fonction décaler et on ajoute une moyenne des courbes afin d'obtenir la courbe moyenne maintenant qu'on a bien fait débuter les courbes en même temps
+# De même, on réalise cela pour 3 et 4 courbes
+
+def moyenne4(f1,f2,f3,f4,n1,n2,n3,n4,title,e):
+    X1,Y1=lecturelissee(f1,n1)
+    X2,Y2=lecturelissee(f2,n1)
+    X3,Y3=lecturelissee(f3,n1)
+    X4,Y4=lecturelissee(f4,n4)
+
+    m1,m2,m3,m4 = debutcourbe(Y1,e),debutcourbe(Y2,e),debutcourbe(Y3,e),debutcourbe(Y4,e)
+
+    m = max (m1,m2,m3,m4)
+
+    Y1 = (m-m1)*[0] + Y1
+    Y4 = (m-m4)*[0] + Y4
+    Y3 = (m-m3)*[0] + Y3
+    Y2 = (m-m2)*[0] + Y2
+
+    h = X2[2] - X2[1]
+    xmax = X2[len(X2)-1]
+    X2 = X2 + [xmax + i*h for i in range(m-m2)]
+
+    h = X3[2] - X3[1]
+    xmax = X3[len(X3)-1]
+    X3 = X3 + [xmax + i*h for i in range(m-m3)]
+
+    h = X4[2] - X4[1]
+    xmax = X4[len(X4)-1]
+    X4 = X4 + [xmax + i*h for i in range(m-m4)]
+
+    h = X1[2] - X1[1]
+    xmax = X1[len(X1)-1]
+    X1 = X1 + [xmax + i*h for i in range(m-m1)]
+
+    X = []
+    Y = []
+    n = min(len(X1), len(X2), len(X3),len(X4))
+    for i in range (n):
+        Y.append((Y1[i]+Y2[i]+Y3[i]+Y4[i])/4)
+        X.append(X1[i])
+
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(X,Y,label='courbe moyenne',c='#FC5D5D',linewidth =0.7)
+    plt.grid()
+    plt.legend()
+    plt.xlabel('temps en s')
+    plt.ylabel('intensité en V')
+    plt.title(title)
+    plt.xlim([0,60])
+    plt.show()
+
+def moyenne3(f1,f2,f3,n1,n2,n3,title,e):
+    X1,Y1=lecturelissee(f1,n1)
+    X2,Y2=lecturelissee(f2,n1)
+    X3,Y3=lecturelissee(f3,n1)
+
+
+    m1,m2,m3 = debutcourbe(Y1,e),debutcourbe(Y2,e),debutcourbe(Y3,e)
+
+    m = max (m1,m2,m3)
+
+    Y1 = (m-m1)*[0] + Y1
+
+    Y3 = (m-m3)*[0] + Y3
+    Y2 = (m-m2)*[0] + Y2
+
+    h = X2[2] - X2[1]
+    xmax = X2[len(X2)-1]
+    X2 = X2 + [xmax + i*h for i in range(m-m2)]
+
+    h = X3[2] - X3[1]
+    xmax = X3[len(X3)-1]
+    X3 = X3 + [xmax + i*h for i in range(m-m3)]
+
+
+    h = X1[2] - X1[1]
+    xmax = X1[len(X1)-1]
+    X1 = X1 + [xmax + i*h for i in range(m-m1)]
+
+    X = []
+    Y = []
+    n = min(len(X1), len(X2), len(X3),)
+    for i in range (n):
+        Y.append((Y1[i]+Y2[i]+Y3[i])/3)
+        X.append(X1[i])
+
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(X,Y,label='courbe moyenne',c='#77B5FE',linewidth =0.7)
+    plt.grid()
+    plt.legend()
+    plt.xlabel('temps en s')
+    plt.ylabel('intensité en V')
+    plt.title(title)
+    plt.xlim([0,60])
+    plt.show()
+
+
+## ON AFFICHE LES COURBES
+
+
+affichlissegros()
+affichsimplegros()
+
+tracerlisseALL(G1,G2,G3,G4,80,80,100,100,'toutes les courbes lissées')
+decaler(G1,G2,G3,G4,80,80,100,100,'toutes les courbes lissées et décalées', 0.2)
+
+tracerlisseALL(P1,P2,P3,P4,100,80,80,80,'toutes les courbes lissées')
+decaler3(P4,P2,P3,100,80,80,'toutes les courbes lissées',0.5)
+tracersimple(Mot, 'Image de la tension de la tach, décharge du cond dans moteur')
+tracerlisse(Mot,100, 'Image de la tension de la tach, décharge du cond dans moteur')
+
+moyenne4(G1,G2,G3,G4,80,80,100,100,'moyenne des courbes lissées et décalées', 0.2)
+moyenne3(P4,P2,P3,100,80,80,'moyenne de toutes les courbes lissées et décalées',0.5)
+
