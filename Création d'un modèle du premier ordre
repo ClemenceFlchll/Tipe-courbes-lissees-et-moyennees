@@ -1,0 +1,230 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import curve_fit
+
+## DONNEES
+
+# courbes de décharge du gros condensateur dans une résistance de un ohm :
+G1 = 'C:/Users/Clem/Desktop/tipe/décharge gros resistance 1 ohm exp 1 vendredi 4 fev.txt'
+G2 ='C:/Users/Clem/Desktop/tipe/décharge gros resistance 1 ohm exp 2 vendredi 4 février.txt'
+G3 = 'C:/Users/Clem/Desktop/tipe/décharge gros resistance 1 ohm exp 3 vendredi 4 février.txt'
+G4 = 'C:/Users/Clem/Desktop/tipe/décharge gros resistance 1 ohm exp 4 vendredi 4 février.txt'
+
+# courbes de décharge du petit condensateur dans une résistance de un ohm :
+P1 = 'C:/Users/Clem/Desktop/tipe/décharge petit resistance 1 ohm exp 1 vendredi 4 février.txt'
+P2 = 'C:/Users/Clem/Desktop/tipe/décharge petit resistance 1 ohm exp 2 vendredi 4 février.txt'
+P3 = 'C:/Users/Clem/Desktop/tipe/décharge petit resistance 1 ohm exp 3 vendredi 4 février.txt'
+P4 = 'C:/Users/Clem/Desktop/tipe/décharge petit resistance 1 ohm exp 4 vendredi 4 février.txt'
+
+## FONCTIONS
+
+def lecturelissee(adresse,n):
+    f = open(adresse,mode='r')
+    x = []
+    y = []
+    for line in f:
+        line = line.replace(",",".")
+        line = line.split()
+        try:
+            xi,yi = line
+        except:
+            continue
+        xi,yi = float(xi),float(yi)
+        x.append(xi)
+        y.append(yi)
+    f.close()
+    Y10 = []
+    for i in range(len(y)-n):
+        s=0
+        for k in range(n):
+            s+= y[i+k]
+        Y10.append(s/n)
+    Y10+=y[len(y)-n:len(y)]
+    return [x,Y10]
+
+G = [lecturelissee(G1,80),lecturelissee(G2,80),lecturelissee(G3,100),lecturelissee(G4,100)]
+P = [lecturelissee(P4,100),lecturelissee(P2,80),lecturelissee(P3,100)]
+
+
+def debutcourbe(Y,e):
+    i = 0
+    while Y[i]<e :
+        i+=1
+    return i
+
+
+# On simplifie la fonction moyenne pour récupérer les listes X et Y moyennes à partir d'un liste G contenant plusieurs couples de listes X et Y
+
+def listemoy(G,e): #permet de récupérer une liste moyenne
+
+    n= len(G)
+    m=[] #on veut récupérer les indices de début des courbes (premier indice où la courbe s'écarte de zéro de e)
+    for i in range(n):
+        m.append(debutcourbe(G[i][1],e))
+
+    mx=max(m)
+
+    for i in range(n):
+        # on modifie les listes Y en ajoutant des 0
+        G[i][1] = (mx-m[i])*[0] + G[i][1]
+        # on modifie les listes X en ajoutant des valeurs correspondant à des temps
+        h=G[i][0][2]-G[i][0][1]
+        xmax = G[i][0][len(G[i][0])-1]
+        G[i][0] = G[i][0] + [xmax + i*h for i in range(mx-m[i])]
+
+    X = []
+    Y = []
+    min = len(G[0][0])
+    for i in range (1,n):
+        if len(G[i][0])< min:
+            min = len(G[i][0])
+    x=0
+    y=0
+    for i in range (min):
+        for j in range (n):
+            x += G[j][0][i]
+            y += G[j][1][i]
+        X.append(x/n)
+        Y.append(y/n)
+        x=0
+        y=0
+
+    return X,Y
+
+
+def tracer(X,Y,title):
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(X,Y,label='courbe moyenne',c='#77B5FE',linewidth =0.7)
+    plt.grid()
+    plt.legend()
+    plt.xlabel('temps en s')
+    plt.ylabel('intensité en V')
+    plt.title(title)
+    plt.xlim([0,60])
+    plt.show()
+
+
+
+
+def max(X):
+    max = 0
+    n = len (X)
+    for i in range (n):
+        if X[i]>max :
+            max = X[i]
+    return max
+
+
+# on cherche à tracer une courbe afin d'obtenir le temps caractéristique de décharge
+# Pour cela on a plusieures méthodes, la première étant de calculer lorsque la tangente à l'origine coupe la valeur finale
+
+
+def tempcara(X,Y,h,title): # hypothèse : len(X) = len(Y)
+
+    # on veut récupérer l'indice de la valeur maximale de la courbe moyenne, afin de connaître quand faire débuter de la tangente
+    max=Y[0]
+    imax = 0
+    n = len(Y)
+    for i in range (n):
+        if Y[i]>max:
+            max = Y[i]
+            imax = i
+
+
+    Yprim_max = (Y[imax]-Y[imax+h])/(X[imax]-X[imax+h])
+
+# d'après la méthode de Newton on peut approximer le nb dérivé par f'(a) = (f(a+u/2)-f(a-u/2))/u
+# ici u est défini par rapport à h, u = X[imax]-X[imax+h]
+# h est un écart entre des indices que l'on peut moduler pour obtenir une précision plus ou moins grande
+
+    Ysec=[]
+    for i in range(len(X)-imax):
+        Ysec.append(Yprim_max*X[i] + max)
+
+    Xsec = X[imax:len(X)]
+
+    # on ne veut pas prolonger la tangente dans les négatifs
+    for i in range (len(Ysec)):
+        if Ysec[i]<0 :
+            Ysec[i]=0
+
+
+    # on récupére l'indice auquel la sécante coupe la valeur finale,
+    # sachant que la valeur finale est 0
+    i = imax +1
+    while Ysec[i]>0 :
+        i+=1
+
+    Xtau = X[i]
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(X,Y,label='courbe moyenne',c='#01D758',linewidth =0.7)
+    plt.plot(Xsec,Ysec,label='sécante',c='#77B5FE',linewidth =0.7)
+    plt.grid()
+    plt.legend()
+    plt.xlabel('temps en s')
+    plt.ylabel('intensité en V')
+    plt.xlim([0,60])
+    plt.title(title)
+    plt.show()
+
+    return Xtau
+
+
+def ordre1(K,tau,temps):
+    return [K*(1-np.exp(-t/tau)) for t in temps]
+
+
+
+
+
+# On trace finalement sur le même graphe la courbe moyenne ainsi que la courbe modèle afin de vérifier la cohérence du modèle
+
+def tracerordre(XG,YG,tau,K,e,title):#d correpond au décalage ajusté pour faire correspondre au mieux le modèle avec la réalité, on n'utilise pas debutcourbe car il n'est pas forcémet judicieux de faire démarrer le modèle en même temps que la courbe moyenne
+    X = XG[:len(XG)-e]
+    H=[0]*e +[K*(np.exp(-t/tau)) for t in X]
+
+
+    plt.figure()
+    plt.plot(XG,H,label='courbe modèle',c='#77B5FE', linewidth=0.7)
+    plt.plot(XG,YG,label='courbe moyenne',c='#FC5D5D', linewidth=0.7)
+    plt.grid()
+    plt.xlabel('temps en s')
+    plt.ylabel('intensité en V')
+    plt.title(title)
+    plt.legend()
+    plt.xlim([0,100]) # on trace sur 100 secondes
+    plt.show()
+
+## EXPLOITATION DES DONNEES
+
+# On pose les listes des courbes moyennes
+XG,YG = listemoy(G,0.2) # pour le supercondensateur de 10F
+XP,YP = listemoy(P,0.2) # pour le supercondensateur de 5F
+
+h = 80 # valeur trouvée après plusieurs essais, donne un résultat de tau cohérent avec ce qu'on peut mesurer graphiquement
+
+
+tau1 = tempcara(XP,YP,h,'petit condo et sécante')
+tau2 = tempcara(XG,YG,h,'gros condo et sécante')
+print (tau1)
+print (tau2)
+K2 = max(YG)
+K1 = max(YP)
+
+tracerordre(XG,YG,tau1,K2,450,'modèle et moyenne gros condo')
+tracerordre(XP,YP,tau2,K1,950,'modèle et moyenne petit condo')
+
+# afin de vérifier, voici
+# des valeurs de tau qui semblent bien correspondre :
+#tracerordre(XG,YG,11,K2,450,'modèle et moyenne gros condo')
+#tracerordre(XP,YP,6,K1,950,'modèle et moyenne petit condo')
+
+#tempcara(XG,YG,5,0.005)
+#tempcara(XP,YP,50,3)
+
+#tracer(XG,YG,'moyenne gros condo')
+#tracer(XP,YP,'moyenne petit condo')
